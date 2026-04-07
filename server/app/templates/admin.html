@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+    <h2>Управление пользователями</h2>
+    <button onclick="showCreateModal()">+ Создать пользователя</button>
+</div>
+
+<div class="card">
+    <table>
+        <thead><tr>
+            <th>Имя</th><th>Роль</th><th>Статус</th><th>Создан</th><th>Действия</th>
+        </tr></thead>
+        <tbody id="users-tbody"></tbody>
+    </table>
+</div>
+
+<!-- Модалка создания -->
+<div id="create-modal" style="display:none;position:fixed;inset:0;
+     background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center">
+    <div class="card" style="width:400px">
+        <h3 style="margin-bottom:20px">Новый пользователь</h3>
+        <label>Имя пользователя</label>
+        <input type="text" id="new-username" style="margin-bottom:12px">
+        <label>Пароль (минимум 12 символов)</label>
+        <input type="password" id="new-password" style="margin-bottom:12px">
+        <label>Роль</label>
+        <select id="new-role" style="margin-bottom:20px">
+            <option value="viewer">viewer — только просмотр</option>
+            <option value="operator">operator — выполнение команд</option>
+            <option value="admin">admin — полный доступ</option>
+        </select>
+        <div style="display:flex;gap:8px">
+            <button onclick="createUser()">Создать</button>
+            <button class="btn-secondary" onclick="closeCreateModal()">Отмена</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadUsers() {
+    const res   = await apiFetch("/api/v1/admin/users");
+    if (!res.ok) return;
+    const users = await res.json();
+    const tbody = document.getElementById("users-tbody");
+    tbody.innerHTML = users.map(u => `<tr>
+        <td><strong>${escHtml(u.username)}</strong></td>
+        <td><span class="badge" style="background:rgba(108,99,255,.15);color:#6c63ff">
+            ${u.role}</span></td>
+        <td>${u.is_active
+            ? '<span class="badge badge-online">active</span>'
+            : '<span class="badge badge-offline">disabled</span>'}</td>
+        <td style="color:#64748b;font-size:13px">${formatTime(u.created_at)}</td>
+        <td style="display:flex;gap:6px">
+            <button class="btn-secondary" style="padding:4px 10px;font-size:12px"
+                onclick="toggleUser('${u.id}', ${!u.is_active})">
+                ${u.is_active ? 'Disable' : 'Enable'}</button>
+            <button class="btn-danger" style="padding:4px 10px;font-size:12px"
+                onclick="deleteUser('${u.id}','${escHtml(u.username)}')">Del</button>
+        </td>
+    </tr>`).join("");
+}
+
+function showCreateModal()  { document.getElementById("create-modal").style.display = "flex"; }
+function closeCreateModal() { document.getElementById("create-modal").style.display = "none"; }
+
+async function createUser() {
+    const username = document.getElementById("new-username").value.trim();
+    const password = document.getElementById("new-password").value;
+    const role     = document.getElementById("new-role").value;
+    if (!username || !password) return showToast("Заполни все поля", "error");
+
+    const res = await apiFetch("/api/v1/admin/users", {
+        method: "POST",
+        body: JSON.stringify({username, password, role})
+    });
+    const data = await res.json();
+    if (res.ok) {
+        showToast(`Пользователь ${username} создан`, "success");
+        closeCreateModal();
+        loadUsers();
+    } else {
+        showToast(data.error || "Ошибка", "error");
+    }
+}
+
+async function toggleUser(id, newState) {
+    const res = await apiFetch(`/api/v1/admin/users/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({is_active: newState})
+    });
+    if (res.ok) { showToast("Обновлено", "success"); loadUsers(); }
+}
+
+async function deleteUser(id, name) {
+    if (!confirm(`Удалить пользователя "${name}"?`)) return;
+    const res = await apiFetch(`/api/v1/admin/users/${id}`, {method: "DELETE"});
+    if (res.ok) { showToast(`${name} удалён`, "success"); loadUsers(); }
+    else showToast("Ошибка удаления", "error");
+}
+
+loadUsers();
+</script>
+{% endblock %}

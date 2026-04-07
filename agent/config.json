@@ -1,0 +1,9 @@
+{
+  "server_url":     "https://localhost:8443",
+  "ws_url":         "wss://localhost:8443/ws/agent",
+  "ca_cert_path":   "../certs/ca.crt",
+  "agent_cert":     "../certs/agent.crt",
+  "agent_key":      "../certs/agent.key",
+  "state_file":     "agent_state.json",
+  "heartbeat_secs": 30
+}

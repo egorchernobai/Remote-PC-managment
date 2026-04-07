@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom:24px">Dashboard</h2>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
+    <div class="card" style="text-align:center">
+        <div style="font-size:36px;color:#6c63ff" id="total-agents">—</div>
+        <div style="color:#64748b;margin-top:4px">Total Agents</div>
+    </div>
+    <div class="card" style="text-align:center">
+        <div style="font-size:36px;color:#22c55e" id="online-agents">—</div>
+        <div style="color:#64748b;margin-top:4px">Online</div>
+    </div>
+    <div class="card" style="text-align:center">
+        <div style="font-size:36px;color:#ef4444" id="offline-agents">—</div>
+        <div style="color:#64748b;margin-top:4px">Offline</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom:16px">Agents</h3>
+    <table id="agents-table">
+        <thead><tr>
+            <th>Hostname</th><th>OS</th><th>CPU %</th>
+            <th>RAM %</th><th>Status</th><th>Last Seen</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="agents-tbody"></tbody>
+    </table>
+</div>
+
+<!-- Модальное окно команды -->
+<div id="cmd-modal" style="display:none;position:fixed;inset:0;
+     background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center">
+    <div class="card" style="width:560px;max-width:90vw">
+        <h3 style="margin-bottom:16px">Execute Command</h3>
+        <input type="hidden" id="cmd-agent-id">
+        <div style="margin-bottom:12px">
+            <label style="color:#64748b;font-size:13px">Type</label>
+            <select id="cmd-type" style="margin-top:4px">
+                <option value="shell">Shell</option>
+                <option value="script">Script</option>
+                <option value="process_list">List Processes</option>
+                <option value="service_list">List Services</option>
+            </select>
+        </div>
+        <div style="margin-bottom:16px">
+            <label style="color:#64748b;font-size:13px">Command / Script</label>
+            <textarea id="cmd-text" rows="5"
+                style="margin-top:4px;font-family:monospace"></textarea>
+        </div>
+        <div style="display:flex;gap:8px">
+            <button onclick="sendCommand()">▶ Execute</button>
+            <button class="btn-danger" onclick="closeModal()">Cancel</button>
+        </div>
+        <pre id="cmd-output" style="margin-top:16px;display:none"></pre>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadAgents() {
+    const res = await apiFetch("/api/v1/agents/");
+    if (!res.ok) return;
+    const agents = await res.json();
+    const tbody = document.getElementById("agents-tbody");
+    tbody.innerHTML = "";
+    let online = 0;
+
+    for (const a of agents) {
+        if (a.status === "online") online++;
+        const si = a.os_info || {};
+        const row = `<tr>
+            <td>${escHtml(a.hostname)}</td>
+            <td>${escHtml(si.os_name || "—")}</td>
+            <td>${si.cpu_usage != null ? si.cpu_usage.toFixed(1)+"%" : "—"}</td>
+            <td>${si.mem_usage != null ? si.mem_usage.toFixed(1)+"%" : "—"}</td>
+            <td><span class="badge badge-${a.status}">${a.status}</span></td>
+            <td style="color:#64748b;font-size:13px">${formatTime(a.last_seen)}</td>
+            <td>
+                <button onclick="openModal('${a.id}')" 
+                        ${a.status!=='online'?'disabled':''}>CMD</button>
+                <a href="/agents/${a.id}" style="margin-left:8px;
+                   color:#6c63ff;font-size:13px">Details</a>
+            </td>
+        </tr>`;
+        tbody.insertAdjacentHTML("beforeend", row);
+    }
+    document.getElementById("total-agents").textContent  = agents.length;
+    document.getElementById("online-agents").textContent = online;
+    document.getElementById("offline-agents").textContent = agents.length - online;
+}
+
+function openModal(agentId) {
+    document.getElementById("cmd-agent-id").value = agentId;
+    document.getElementById("cmd-output").style.display = "none";
+    document.getElementById("cmd-modal").style.display = "flex";
+}
+function closeModal() {
+    document.getElementById("cmd-modal").style.display = "none";
+}
+
+async function sendCommand() {
+    const agentId = document.getElementById("cmd-agent-id").value;
+    const cmdType = document.getElementById("cmd-type").value;
+    const cmdText = document.getElementById("cmd-text").value;
+    if (!cmdText.trim()) return alert("Command cannot be empty");
+
+    const res = await apiFetch("/api/v1/commands/", {
+        method: "POST",
+        body: JSON.stringify({agent_id: agentId, command: cmdText, cmd_type: cmdType})
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || "Error"); return; }
+
+    const cmdId = data.command_id;
+    // Polling результата
+    const out = document.getElementById("cmd-output");
+    out.style.display = "block";
+    out.textContent = "⏳ Waiting for result...";
+    for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const r2 = await apiFetch(`/api/v1/commands/${cmdId}/result`);
+        if (r2.ok) {
+            const d2 = await r2.json();
+            if (d2.status !== "pending" && d2.status !== "running") {
+                out.textContent = `Exit: ${d2.exit_code}\n\n${d2.output || "(no output)"}`;
+                return;
+            }
+        }
+    }
+    out.textContent = "Timeout: no response from agent";
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function formatTime(t) {
+    if (!t) return "Never";
+    return new Date(t).toLocaleString("ru-RU");
+}
+
+loadAgents();
+setInterval(loadAgents, 15000);
+</script>
+{% endblock %}

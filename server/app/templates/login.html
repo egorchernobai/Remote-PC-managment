@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>RMM — Вход</title>
+    <style>
+        *  { box-sizing:border-box; margin:0; padding:0; }
+        body { background:#0f1117; color:#e2e8f0;
+               font-family:'Inter',system-ui,sans-serif;
+               display:flex; align-items:center;
+               justify-content:center; min-height:100vh; }
+        .card { background:#1a1d27; border-radius:16px;
+                padding:40px; width:360px;
+                box-shadow:0 8px 40px rgba(0,0,0,.4); }
+        h1 { font-size:22px; margin-bottom:4px; }
+        .sub { color:#64748b; font-size:14px; margin-bottom:32px; }
+        label { font-size:13px; color:#64748b; display:block; margin-bottom:4px; }
+        input { background:#0f1117; border:1px solid rgba(255,255,255,.1);
+                color:#e2e8f0; padding:10px 14px; border-radius:8px;
+                width:100%; font-size:14px; margin-bottom:16px; }
+        input:focus { outline:none; border-color:#6c63ff; }
+        button { background:#6c63ff; color:#fff; border:none;
+                 padding:11px; border-radius:8px; width:100%;
+                 font-size:15px; cursor:pointer; font-weight:500; }
+        button:hover { opacity:.85; }
+        .error { background:rgba(239,68,68,.15); color:#ef4444;
+                 border:1px solid rgba(239,68,68,.3);
+                 padding:10px 14px; border-radius:8px;
+                 font-size:13px; margin-bottom:16px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>🖥 RMM Panel</h1>
+    <p class="sub">Удалённое управление рабочими станциями</p>
+
+    {% if error %}
+    <div class="error">⚠️ {{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+        <label>Имя пользователя</label>
+        <input type="text" name="username" autofocus autocomplete="username"
+               value="{{ request.form.get('username', '') }}">
+        <label>Пароль</label>
+        <input type="password" name="password" autocomplete="current-password">
+        <button type="submit">Войти</button>
+    </form>
+</div>
+</body>
+</html>
