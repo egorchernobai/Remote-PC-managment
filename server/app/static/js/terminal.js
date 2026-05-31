@@ -1,12 +1,8 @@
-/**
- * Псевдо-терминал для отображения результатов команд.
- * Используется на странице agent_detail.html
- */
 class Terminal {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
-        this.history   = [];
-        this.historyIdx= -1;
+        this.history = [];
+        this.historyIdx = -1;
         this._render();
     }
 
@@ -46,74 +42,85 @@ class Terminal {
     }
 
     write(text, type = "output") {
-        const el    = document.getElementById("terminal-output");
-        const line  = document.createElement("div");
-        const colors= {output:"#e2e8f0", error:"#ef4444",
-                       info:"#6c63ff", success:"#22c55e", cmd:"#f59e0b"};
-        line.style.color      = colors[type] || "#e2e8f0";
+        const output = document.getElementById("terminal-output");
+        const line = document.createElement("div");
+        const colors = {
+            output: "#e2e8f0",
+            error: "#ef4444",
+            info: "#6c63ff",
+            success: "#22c55e",
+            cmd: "#f59e0b"
+        };
+        line.style.color = colors[type] || "#e2e8f0";
         line.style.whiteSpace = "pre-wrap";
-        line.textContent      = text;
-        el.appendChild(line);
-        el.scrollTop = el.scrollHeight;
+        line.textContent = text;
+        output.appendChild(line);
+        output.scrollTop = output.scrollHeight;
     }
 
     clear() {
         document.getElementById("terminal-output").innerHTML = "";
     }
 
-    onKey(e) {
+    onKey(event) {
         const input = document.getElementById("terminal-input");
-        if (e.key === "Enter") {
-            const cmd = input.value.trim();
-            if (!cmd) return;
-            this.history.unshift(cmd);
+        if (event.key === "Enter") {
+            const command = input.value.trim();
+            if (!command) return;
+            this.history.unshift(command);
             this.historyIdx = -1;
-            this.write(`$ ${cmd}`, "cmd");
+            this.write(`$ ${command}`, "cmd");
             input.value = "";
-            this._dispatch(cmd);
-        } else if (e.key === "ArrowUp") {
-            this.historyIdx = Math.min(this.historyIdx+1, this.history.length-1);
+            this._dispatch(command);
+        } else if (event.key === "ArrowUp") {
+            this.historyIdx = Math.min(this.historyIdx + 1, this.history.length - 1);
             input.value = this.history[this.historyIdx] || "";
-        } else if (e.key === "ArrowDown") {
-            this.historyIdx = Math.max(this.historyIdx-1, -1);
+        } else if (event.key === "ArrowDown") {
+            this.historyIdx = Math.max(this.historyIdx - 1, -1);
             input.value = this.historyIdx >= 0 ? this.history[this.historyIdx] : "";
         }
     }
 
-    async _dispatch(cmd) {
-        // agentId должен быть доступен глобально
+    async _dispatch(command) {
         if (typeof AGENT_ID === "undefined") {
-            this.write("Error: AGENT_ID not defined", "error"); return;
+            this.write("Error: AGENT_ID not defined", "error");
+            return;
         }
-        this.write("⏳ Executing...", "info");
-        const res = await apiFetch("/api/v1/commands/", {
+
+        this.write("Executing...", "info");
+        const response = await apiFetch("/api/v1/commands/", {
             method: "POST",
             body: JSON.stringify({
                 agent_id: AGENT_ID,
-                command:  cmd,
+                command: command,
                 cmd_type: "shell"
             })
         });
-        if (!res.ok) {
-            const d = await res.json();
-            this.write(`Error: ${d.error}`, "error"); return;
-        }
-        const {command_id} = await res.json();
 
-        // Polling с таймаутом
-        for (let i = 0; i < 30; i++) {
-            await new Promise(r => setTimeout(r, 1500));
-            const r2 = await apiFetch(`/api/v1/commands/${command_id}/result`);
-            if (!r2.ok) continue;
-            const d = await r2.json();
-            if (d.status !== "pending" && d.status !== "running") {
-                const type = d.exit_code === 0 ? "success" : "error";
-                this.write(d.output || "(no output)", type);
-                if (d.exit_code !== 0)
-                    this.write(`Exit code: ${d.exit_code}`, "error");
+        if (!response.ok) {
+            const data = await response.json();
+            this.write(`Error: ${data.error}`, "error");
+            return;
+        }
+
+        const {command_id: commandId} = await response.json();
+
+        for (let attempt = 0; attempt < 30; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            const resultResponse = await apiFetch(`/api/v1/commands/${commandId}/result`);
+            if (!resultResponse.ok) continue;
+
+            const data = await resultResponse.json();
+            if (data.status !== "pending" && data.status !== "running") {
+                const type = data.exit_code === 0 ? "success" : "error";
+                this.write(data.output || "(no output)", type);
+                if (data.exit_code !== 0) {
+                    this.write(`Exit code: ${data.exit_code}`, "error");
+                }
                 return;
             }
         }
+
         this.write("Timeout: no response from agent", "error");
     }
 }

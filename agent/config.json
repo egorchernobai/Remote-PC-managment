@@ -1,9 +1,9 @@
 {
   "server_url":     "https://localhost:8443",
   "ws_url":         "wss://localhost:8443/ws/agent",
-  "ca_cert_path":   "../certs/ca.crt",
-  "agent_cert":     "../certs/agent.crt",
-  "agent_key":      "../certs/agent.key",
+  "ca_cert_path":   "c:\\code\\kursovoi2026\\agent\\certs\\ca.crt",
+  "agent_cert":     "c:\\code\\kursovoi2026\\agent\\certs\\agent.crt",
+  "agent_key":      "c:\\code\\kursovoi2026\\agent\\certs\\agent.key",
   "state_file":     "agent_state.json",
   "heartbeat_secs": 30
 }

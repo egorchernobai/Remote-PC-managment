@@ -1,111 +1,100 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-    <a href="/agents" style="color:#64748b;text-decoration:none">← Agents</a>
-    <h2 id="agent-hostname">Loading...</h2>
-    <span id="agent-status-badge" class="badge">—</span>
+<div class="page-header">
+    <div>
+        <div class="toolbar" style="margin-bottom:6px">
+            <a href="/agents" class="text-link">Agents</a>
+            <span class="table-muted">/</span>
+            <span class="table-muted" id="agent-hostname">Loading...</span>
+        </div>
+        <h1 class="page-title">Agent details</h1>
+    </div>
+    <span id="agent-status-badge" class="badge badge-neutral">-</span>
 </div>
 
-<!-- Системная информация -->
-<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:24px">
+<div class="grid-2">
     <div class="card">
-        <div style="color:#64748b;font-size:13px;margin-bottom:12px">SYSTEM</div>
+        <div class="section-label" style="margin-bottom:12px">System</div>
         <table id="sys-table">
-            <tr><td style="color:#64748b">OS</td><td id="si-os">—</td></tr>
-            <tr><td style="color:#64748b">Hostname</td><td id="si-host">—</td></tr>
-            <tr><td style="color:#64748b">Uptime</td><td id="si-uptime">—</td></tr>
-            <tr><td style="color:#64748b">Last seen</td><td id="si-seen">—</td></tr>
+            <tr><td class="table-muted">OS</td><td id="si-os">-</td></tr>
+            <tr><td class="table-muted">Hostname</td><td id="si-host">-</td></tr>
+            <tr><td class="table-muted">Uptime</td><td id="si-uptime">-</td></tr>
+            <tr><td class="table-muted">Last seen</td><td id="si-seen">-</td></tr>
         </table>
     </div>
     <div class="card">
-        <div style="color:#64748b;font-size:13px;margin-bottom:12px">RESOURCES</div>
-        <div style="margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                <span>CPU</span><span id="cpu-val">—</span>
-            </div>
-            <div style="background:#1a1d27;border-radius:4px;height:8px">
-                <div id="cpu-bar" style="background:#6c63ff;height:8px;border-radius:4px;width:0%;transition:.5s"></div>
-            </div>
+        <div class="section-label" style="margin-bottom:12px">Resources</div>
+        <div class="resource-row">
+            <div class="resource-head"><span>CPU</span><span id="cpu-val">-</span></div>
+            <div class="meter"><div id="cpu-bar" class="meter-bar"></div></div>
         </div>
-        <div style="margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                <span>Memory</span><span id="mem-val">—</span>
-            </div>
-            <div style="background:#1a1d27;border-radius:4px;height:8px">
-                <div id="mem-bar" style="background:#22c55e;height:8px;border-radius:4px;width:0%;transition:.5s"></div>
-            </div>
+        <div class="resource-row">
+            <div class="resource-head"><span>Memory</span><span id="mem-val">-</span></div>
+            <div class="meter"><div id="mem-bar" class="meter-bar" style="background:var(--success)"></div></div>
         </div>
-        <div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                <span>Disk</span><span id="disk-val">—</span>
-            </div>
-            <div style="background:#1a1d27;border-radius:4px;height:8px">
-                <div id="disk-bar" style="background:#f59e0b;height:8px;border-radius:4px;width:0%;transition:.5s"></div>
-            </div>
+        <div class="resource-row" style="margin-bottom:0">
+            <div class="resource-head"><span>Disk</span><span id="disk-val">-</span></div>
+            <div class="meter"><div id="disk-bar" class="meter-bar" style="background:var(--warn)"></div></div>
         </div>
     </div>
 </div>
 
-<!-- Вкладки -->
-<div style="display:flex;gap:4px;margin-bottom:16px" id="tabs">
+<div class="tabs" id="tabs">
     <button onclick="switchTab('processes')" class="tab-btn active" data-tab="processes">Processes</button>
-    <button onclick="switchTab('commands')"  class="tab-btn"        data-tab="commands">Commands</button>
-    <button onclick="switchTab('files')"     class="tab-btn"        data-tab="files">Files</button>
+    <button onclick="switchTab('commands')" class="tab-btn" data-tab="commands">Commands</button>
+    <button onclick="switchTab('files')" class="tab-btn" data-tab="files">Files</button>
 </div>
 
-<!-- Процессы -->
 <div id="tab-processes" class="card tab-panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3>Running Processes</h3>
-        <input type="text" id="proc-search" placeholder="Filter..."
-               style="width:200px" oninput="filterProcesses()">
+    <div class="card-header">
+        <h2 class="card-title">Running processes</h2>
+        <input type="text" id="proc-search" placeholder="Filter..." style="width:220px" oninput="filterProcesses()">
     </div>
     <table>
-        <thead><tr><th>PID</th><th>Name</th><th>CPU %</th><th>Mem MB</th><th>Action</th></tr></thead>
+        <thead><tr><th>PID</th><th>Name</th><th>CPU</th><th>Memory MB</th><th>Action</th></tr></thead>
         <tbody id="proc-tbody"></tbody>
     </table>
 </div>
 
-<!-- Команды -->
 <div id="tab-commands" class="card tab-panel" style="display:none">
-    <h3 style="margin-bottom:16px">Execute Command</h3>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+    <div class="card-header">
+        <h2 class="card-title">Execute command</h2>
+    </div>
+    <div class="grid-2">
         <div>
-            <label style="color:#64748b;font-size:13px">Type</label>
-            <select id="cmd-type" style="margin-top:4px">
+            <label>Type</label>
+            <select id="cmd-type">
                 <option value="shell">Shell command</option>
                 <option value="script">Bash/PS script</option>
-                <option value="process_list">List processes (JSON)</option>
+                <option value="process_list">List processes</option>
                 <option value="service_list">List services</option>
                 <option value="service_start">Start service</option>
                 <option value="service_stop">Stop service</option>
             </select>
         </div>
         <div>
-            <label style="color:#64748b;font-size:13px">Timeout (sec)</label>
-            <input type="number" id="cmd-timeout" value="60" min="5" max="300" style="margin-top:4px">
+            <label>Timeout (sec)</label>
+            <input type="number" id="cmd-timeout" value="60" min="5" max="300">
         </div>
     </div>
-    <textarea id="cmd-input" rows="6" placeholder="Enter command..."
-              style="font-family:monospace;margin-bottom:12px"></textarea>
-    <button id="cmd-submit" onclick="submitCommand()">▶ Execute</button>
-    <div id="cmd-history" style="margin-top:24px">
-        <h4 style="margin-bottom:12px;color:#64748b">Recent Commands</h4>
+    <textarea id="cmd-input" rows="6" placeholder="Enter command..." style="margin-bottom:12px"></textarea>
+    <button id="cmd-submit" onclick="submitCommand()">Execute</button>
+    <div id="cmd-history" style="margin-top:22px">
+        <div class="section-label" style="margin-bottom:10px">Recent commands</div>
         <div id="cmd-list"></div>
     </div>
 </div>
 
-<!-- Файлы -->
 <div id="tab-files" class="card tab-panel" style="display:none">
-    <h3 style="margin-bottom:16px">File Transfer</h3>
-    <div style="margin-bottom:24px">
-        <label style="color:#64748b;font-size:13px">Upload file to agent</label>
-        <div style="display:flex;gap:8px;margin-top:8px">
-            <input type="file" id="file-input" style="flex:1">
-            <button onclick="uploadFile()">⬆ Upload</button>
-        </div>
-        <div id="upload-status" style="margin-top:8px;font-size:13px;color:#64748b"></div>
+    <div class="card-header">
+        <h2 class="card-title">File transfer</h2>
     </div>
+    <label>Upload file to agent</label>
+    <div class="toolbar" style="align-items:stretch">
+        <input type="file" id="file-input" style="flex:1">
+        <button onclick="uploadFile()">Upload</button>
+    </div>
+    <div id="upload-status" class="table-muted" style="margin-top:8px"></div>
     <div id="transfer-list"></div>
 </div>
 {% endblock %}
@@ -118,24 +107,23 @@ let allProcesses = [];
 async function loadAgentData() {
     const res = await apiFetch(`/api/v1/agents/${AGENT_ID}`);
     if (!res.ok) return;
-    const a  = await res.json();
+    const a = await res.json();
     const si = a.os_info || {};
 
     document.getElementById("agent-hostname").textContent = a.hostname;
     const badge = document.getElementById("agent-status-badge");
     badge.textContent = a.status;
-    badge.className   = `badge badge-${a.status}`;
+    badge.className = `badge badge-${a.status}`;
 
-    document.getElementById("si-os").textContent     = `${si.os_name||"?"} ${si.os_version||""}`;
-    document.getElementById("si-host").textContent   = si.hostname || a.hostname;
+    document.getElementById("si-os").textContent = `${si.os_name || "?"} ${si.os_version || ""}`;
+    document.getElementById("si-host").textContent = si.hostname || a.hostname;
     document.getElementById("si-uptime").textContent = formatUptime(si.uptime_secs);
-    document.getElementById("si-seen").textContent   = formatTime(a.last_seen);
+    document.getElementById("si-seen").textContent = formatTime(a.last_seen);
 
-    setBar("cpu",  si.cpu_usage,  `${(si.cpu_usage||0).toFixed(1)}%`);
-    setBar("mem",  si.mem_usage,  `${(si.mem_used_mb||0).toLocaleString()} / ${(si.mem_total_mb||0).toLocaleString()} MB`);
-    const diskPct = si.disk_total_gb > 0
-        ? (1 - si.disk_free_gb / si.disk_total_gb) * 100 : 0;
-    setBar("disk", diskPct, `${(si.disk_free_gb||0).toFixed(1)} GB free of ${(si.disk_total_gb||0).toFixed(1)} GB`);
+    setBar("cpu", si.cpu_usage, `${(si.cpu_usage || 0).toFixed(1)}%`);
+    setBar("mem", si.mem_usage, `${(si.mem_used_mb || 0).toLocaleString()} / ${(si.mem_total_mb || 0).toLocaleString()} MB`);
+    const diskPct = si.disk_total_gb > 0 ? (1 - si.disk_free_gb / si.disk_total_gb) * 100 : 0;
+    setBar("disk", diskPct, `${(si.disk_free_gb || 0).toFixed(1)} GB free of ${(si.disk_total_gb || 0).toFixed(1)} GB`);
 
     if (si.processes) {
         allProcesses = si.processes;
@@ -145,22 +133,21 @@ async function loadAgentData() {
 
 function setBar(id, pct, label) {
     const v = Math.min(Math.max(pct || 0, 0), 100);
-    document.getElementById(`${id}-bar`).style.width = v + "%";
-    document.getElementById(`${id}-val`).textContent = label;
-    // Цветовая индикация
     const bar = document.getElementById(`${id}-bar`);
-    bar.style.background = v > 85 ? "#ef4444" : v > 60 ? "#f59e0b" : null;
+    bar.style.width = v + "%";
+    document.getElementById(`${id}-val`).textContent = label;
+    if (v > 85) bar.style.background = "var(--danger)";
+    else if (v > 60) bar.style.background = "var(--warn)";
 }
 
 function renderProcesses(procs) {
     const tbody = document.getElementById("proc-tbody");
     tbody.innerHTML = procs.map(p => `<tr>
-        <td style="color:#64748b">${p.pid}</td>
+        <td class="table-muted">${p.pid}</td>
         <td>${escHtml(p.name)}</td>
         <td>${p.cpu.toFixed(1)}%</td>
         <td>${p.mem_mb}</td>
-        <td><button class="btn-danger" style="padding:2px 8px;font-size:12px"
-            onclick="killProcess(${p.pid}, '${escHtml(p.name)}')">Kill</button></td>
+        <td><button class="btn-danger btn-sm" onclick="killProcess(${p.pid}, '${escHtml(p.name)}')">Kill</button></td>
     </tr>`).join("");
 }
 
@@ -175,40 +162,43 @@ async function killProcess(pid, name) {
     if (!confirm(`Kill process "${name}" (PID ${pid})?`)) return;
     const res = await apiFetch("/api/v1/commands/", {
         method: "POST",
-        body: JSON.stringify({
-            agent_id: AGENT_ID,
-            command: String(pid),
-            cmd_type: "process_kill"
-        })
+        body: JSON.stringify({agent_id: AGENT_ID, command: String(pid), cmd_type: "process_kill"})
     });
-    if (res.ok) { alert("Kill signal sent"); setTimeout(loadAgentData, 3000); }
-    else alert("Failed to send kill signal");
+    if (res.ok) {
+        showToast("Kill signal sent", "success");
+        setTimeout(loadAgentData, 3000);
+    } else {
+        showToast("Failed to send kill signal", "error");
+    }
 }
 
 async function submitCommand() {
-    const btn     = document.getElementById("cmd-submit");
+    const btn = document.getElementById("cmd-submit");
     const cmdType = document.getElementById("cmd-type").value;
     const cmdText = document.getElementById("cmd-input").value.trim();
-    if (!cmdText) return alert("Command cannot be empty");
+    if (!cmdText) return showToast("Command cannot be empty", "error");
 
-    btn.disabled    = true;
-    btn.textContent = "⏳ Running...";
+    btn.disabled = true;
+    btn.textContent = "Running...";
 
     const res = await apiFetch("/api/v1/commands/", {
         method: "POST",
         body: JSON.stringify({agent_id: AGENT_ID, command: cmdText, cmd_type: cmdType})
     });
     const data = await res.json();
-    if (!res.ok) { btn.disabled = false; btn.textContent = "▶ Execute";
-                   return alert(data.error || "Error"); }
+    if (!res.ok) {
+        btn.disabled = false;
+        btn.textContent = "Execute";
+        return showToast(data.error || "Command failed", "error");
+    }
 
-    // Polling результата
     const cmdId = data.command_id;
-    const card  = document.createElement("div");
-    card.style.cssText = "background:#0f1117;border-radius:8px;padding:12px;margin-bottom:8px";
-    card.innerHTML     = `<div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <code style="color:#6c63ff">${escHtml(cmdText.substring(0,60))}</code>
-        <span id="status-${cmdId}" style="color:#f59e0b;font-size:12px">⏳ pending</span>
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.marginBottom = "8px";
+    card.innerHTML = `<div class="toolbar" style="justify-content:space-between;margin-bottom:8px">
+        <code class="mono" style="color:var(--accent)">${escHtml(cmdText.substring(0, 60))}</code>
+        <span id="status-${cmdId}" class="badge badge-pending">pending</span>
     </div><pre id="output-${cmdId}" style="margin:0;min-height:20px"></pre>`;
     document.getElementById("cmd-list").prepend(card);
 
@@ -218,27 +208,26 @@ async function submitCommand() {
         if (r2.ok) {
             const d = await r2.json();
             if (d.status !== "pending" && d.status !== "running") {
-                document.getElementById(`status-${cmdId}`).textContent =
-                    d.exit_code === 0 ? "✅ done" : "❌ failed";
-                document.getElementById(`status-${cmdId}`).style.color =
-                    d.exit_code === 0 ? "#22c55e" : "#ef4444";
-                document.getElementById(`output-${cmdId}`).textContent =
-                    d.output || "(no output)";
+                const status = document.getElementById(`status-${cmdId}`);
+                status.textContent = d.exit_code === 0 ? "done" : "failed";
+                status.className = d.exit_code === 0 ? "badge badge-online" : "badge badge-offline";
+                document.getElementById(`output-${cmdId}`).textContent = d.output || "(no output)";
                 break;
             }
         }
     }
-    btn.disabled = false; btn.textContent = "▶ Execute";
+    btn.disabled = false;
+    btn.textContent = "Execute";
 }
 
 async function uploadFile() {
-    const fi  = document.getElementById("file-input");
-    const st  = document.getElementById("upload-status");
-    if (!fi.files[0]) return alert("Select a file first");
+    const fi = document.getElementById("file-input");
+    const st = document.getElementById("upload-status");
+    if (!fi.files[0]) return showToast("Select a file first", "error");
 
     const fd = new FormData();
     fd.append("file", fi.files[0]);
-    st.textContent = "⏳ Uploading...";
+    st.textContent = "Uploading...";
 
     const res = await fetch(`/api/v1/files/upload/${AGENT_ID}`, {
         method: "POST",
@@ -246,26 +235,17 @@ async function uploadFile() {
         body: fd
     });
     const data = await res.json();
-    if (res.ok) st.textContent = `✅ Uploaded. SHA256: ${data.sha256}`;
-    else        st.textContent = `❌ Error: ${data.error}`;
+    if (res.ok) st.textContent = `Uploaded. SHA256: ${data.sha256}`;
+    else st.textContent = `Error: ${data.error}`;
 }
 
 function switchTab(name) {
     document.querySelectorAll(".tab-panel").forEach(el => el.style.display = "none");
     document.getElementById(`tab-${name}`).style.display = "block";
     document.querySelectorAll(".tab-btn").forEach(b => {
-        b.style.background = b.dataset.tab === name ? "var(--accent)" : "var(--card)";
+        b.classList.toggle("active", b.dataset.tab === name);
     });
 }
-
-function formatUptime(secs) {
-    if (!secs) return "—";
-    const d = Math.floor(secs / 86400), h = Math.floor(secs % 86400 / 3600),
-          m = Math.floor(secs % 3600 / 60);
-    return `${d}d ${h}h ${m}m`;
-}
-function formatTime(t) { return t ? new Date(t).toLocaleString("ru-RU") : "Never"; }
-function escHtml(s)    { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
 loadAgentData();
 setInterval(loadAgentData, 20000);

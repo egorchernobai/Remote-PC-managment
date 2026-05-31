@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rmm_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-rmm_dev}
+      PORT: ${PORT:-8443}
+      USE_TLS: ${USE_TLS:-true}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-jwt-secret-change-me}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin_Win_123!}
+      SERVER_PUBLIC_HOSTS: ${SERVER_PUBLIC_HOSTS:-}
+      AGENT_SERVER_HOST: ${AGENT_SERVER_HOST:-}
+      CERT_FORCE_RENEW: ${CERT_FORCE_RENEW:-false}
+      UPLOAD_FOLDER: /app/uploads
+      SERVER_CERT: /app/server/certs/server.crt
+      SERVER_KEY: /app/server/certs/server.key
+      AGENT_CA: /app/server/certs/ca.crt
+      AGENT_CERT_EXPORT_DIR: /app/agent/certs
+    ports:
+      - "${PORT:-8443}:8443"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./server/certs:/app/server/certs
+      - ./agent/certs:/app/agent/certs
+
+volumes:
+  postgres_data:

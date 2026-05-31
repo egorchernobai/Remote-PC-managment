@@ -4,10 +4,10 @@ flask-jwt-extended==4.7.1
 flask-limiter==3.9.0
 flask-sock==0.7.0
 bcrypt==4.2.1
-psycopg2-binary==2.9.9   # для PostgreSQL; убери если используешь SQLite
+cryptography==46.0.2
+psycopg2-binary==2.9.9
 sqlalchemy==2.0.36
 gunicorn==23.0.0
 gevent==24.11.1
 pytest==8.3.4
 pytest-flask==1.3.0
-shell-words==1.0          # для парсинга команд на Python-стороне

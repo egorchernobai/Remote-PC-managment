@@ -7,42 +7,39 @@ use tokio::time::{timeout, Duration};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CommandResult {
     pub command_id: String,
-    pub output:     String,
-    pub exit_code:  i32,
+    pub output: String,
+    pub exit_code: i32,
 }
 
 const CMD_TIMEOUT_SECS: u64 = 60;
 
-pub async fn execute(
-    command_id: &str,
-    cmd_type:   &str,
-    command:    &str,
-) -> Result<CommandResult> {
+pub async fn execute(command_id: &str, cmd_type: &str, command: &str) -> Result<CommandResult> {
     match cmd_type {
-        "shell"         => run_shell(command_id, command).await,
-        "script"        => run_script(command_id, command).await,
-        "process_list"  => get_process_list(command_id).await,
-        "process_kill"  => kill_process(command_id, command).await,
-        "service_list"  => service_cmd(command_id, "list").await,
+        "shell" => run_shell(command_id, command).await,
+        "script" => run_script(command_id, command).await,
+        "process_list" => get_process_list(command_id).await,
+        "process_kill" => kill_process(command_id, command).await,
+        "service_list" => service_cmd(command_id, "list").await,
         "service_start" => service_cmd(command_id, &format!("start {command}")).await,
-        "service_stop"  => service_cmd(command_id, &format!("stop {command}")).await,
-        _               => bail!("Unknown command type: {cmd_type}"),
+        "service_stop" => service_cmd(command_id, &format!("stop {command}")).await,
+        _ => bail!("Unknown command type: {cmd_type}"),
     }
 }
-
-// ── run_shell ────────────────────────────────────────────────────────────────
 
 async fn run_shell(command_id: &str, cmd: &str) -> Result<CommandResult> {
     #[cfg(target_os = "windows")]
     let out = {
         let cmd_lower = cmd.to_lowercase();
         let blocked = [
-            "format ", "del /f /s /q c:", "rd /s /q c:",
-            "shutdown", "reg delete",
+            "format ",
+            "del /f /s /q c:",
+            "rd /s /q c:",
+            "shutdown",
+            "reg delete",
         ];
-        for b in &blocked {
-            if cmd_lower.contains(b) {
-                bail!("Command blocked by policy: {b}");
+        for pattern in &blocked {
+            if cmd_lower.contains(pattern) {
+                bail!("Command blocked by policy: {pattern}");
             }
         }
         timeout(
@@ -59,10 +56,10 @@ async fn run_shell(command_id: &str, cmd: &str) -> Result<CommandResult> {
 
     #[cfg(not(target_os = "windows"))]
     let out = {
-        let (prog, args) = parse_safe_command(cmd)?;
+        let (program, args) = parse_safe_command(cmd)?;
         timeout(
             Duration::from_secs(CMD_TIMEOUT_SECS),
-            Command::new(&prog)
+            Command::new(&program)
                 .args(&args)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
@@ -74,12 +71,10 @@ async fn run_shell(command_id: &str, cmd: &str) -> Result<CommandResult> {
 
     Ok(CommandResult {
         command_id: command_id.to_string(),
-        output:     combine_output(&out.stdout, &out.stderr),
-        exit_code:  out.status.code().unwrap_or(-1),
+        output: combine_output(&out.stdout, &out.stderr),
+        exit_code: out.status.code().unwrap_or(-1),
     })
 }
-
-// ── run_script ───────────────────────────────────────────────────────────────
 
 async fn run_script(command_id: &str, script: &str) -> Result<CommandResult> {
     use tokio::fs;
@@ -131,15 +126,12 @@ async fn run_script(command_id: &str, script: &str) -> Result<CommandResult> {
 
     Ok(CommandResult {
         command_id: command_id.to_string(),
-        output:     combine_output(&out.stdout, &out.stderr),
-        exit_code:  out.status.code().unwrap_or(-1),
+        output: combine_output(&out.stdout, &out.stderr),
+        exit_code: out.status.code().unwrap_or(-1),
     })
 }
 
-// ── kill_process ─────────────────────────────────────────────────────────────
-
 async fn kill_process(command_id: &str, pid_str: &str) -> Result<CommandResult> {
-    // Логируем что реально получили
     tracing::info!("kill_process called with pid_str='{pid_str}'");
 
     let pid: u32 = pid_str
@@ -177,34 +169,28 @@ async fn kill_process(command_id: &str, pid_str: &str) -> Result<CommandResult> 
 
     Ok(CommandResult {
         command_id: command_id.to_string(),
-        output:     combine_output(&out.stdout, &out.stderr),
-        exit_code:  out.status.code().unwrap_or(-1),
+        output: combine_output(&out.stdout, &out.stderr),
+        exit_code: out.status.code().unwrap_or(-1),
     })
 }
-
-
-// ── get_process_list ─────────────────────────────────────────────────────────
 
 async fn get_process_list(command_id: &str) -> Result<CommandResult> {
     let info = crate::sysinfo_collector::collect();
     Ok(CommandResult {
         command_id: command_id.to_string(),
-        output:     serde_json::to_string(&info.processes)?,
-        exit_code:  0,
+        output: serde_json::to_string(&info.processes)?,
+        exit_code: 0,
     })
 }
-
-// ── service_cmd ──────────────────────────────────────────────────────────────
-// Единственное определение — внутри используем cfg-блоки без return
 
 async fn service_cmd(command_id: &str, action: &str) -> Result<CommandResult> {
     #[cfg(target_os = "windows")]
     let out = {
         let parts: Vec<&str> = action.splitn(2, ' ').collect();
         let sc_args: Vec<&str> = match parts.as_slice() {
-            ["list"]        => vec!["query"],
+            ["list"] => vec!["query"],
             ["start", name] => vec!["start", name],
-            ["stop",  name] => vec!["stop",  name],
+            ["stop", name] => vec!["stop", name],
             _ => bail!("Unknown service action: {action}"),
         };
         timeout(
@@ -239,27 +225,24 @@ async fn service_cmd(command_id: &str, action: &str) -> Result<CommandResult> {
 
     Ok(CommandResult {
         command_id: command_id.to_string(),
-        output:     combine_output(&out.stdout, &out.stderr),
-        exit_code:  out.status.code().unwrap_or(-1),
+        output: combine_output(&out.stdout, &out.stderr),
+        exit_code: out.status.code().unwrap_or(-1),
     })
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-
 #[cfg(not(target_os = "windows"))]
 fn parse_safe_command(cmd: &str) -> Result<(String, Vec<String>)> {
-    let parts: Vec<String> = shell_words::split(cmd)
-        .map_err(|e| anyhow::anyhow!("Invalid command syntax: {e}"))?;
+    let parts: Vec<String> =
+        shell_words::split(cmd).map_err(|e| anyhow::anyhow!("Invalid command syntax: {e}"))?;
     if parts.is_empty() {
         bail!("Empty command");
     }
     let blocked_bins = [
-        "rm", "mkfs", "dd", "shred", "shutdown",
-        "reboot", "init", "poweroff", "halt", "fdisk",
+        "rm", "mkfs", "dd", "shred", "shutdown", "reboot", "init", "poweroff", "halt", "fdisk",
     ];
     let base = std::path::Path::new(&parts[0])
         .file_name()
-        .and_then(|n| n.to_str())
+        .and_then(|name| name.to_str())
         .unwrap_or(&parts[0]);
     if blocked_bins.contains(&base) {
         bail!("Execution of '{base}' is blocked by policy");
@@ -276,43 +259,41 @@ fn combine_output(stdout: &[u8], stderr: &[u8]) -> String {
     out.chars().take(65536).collect()
 }
 
-// ── tests ────────────────────────────────────────────────────────────────────
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[tokio::test]
     async fn test_echo_command() {
-        let r = execute("t1", "shell", "echo hello").await.unwrap();
-        assert_eq!(r.exit_code, 0);
-        assert!(r.output.contains("hello"));
+        let result = execute("t1", "shell", "echo hello").await.unwrap();
+        assert_eq!(result.exit_code, 0);
+        assert!(result.output.contains("hello"));
     }
 
     #[tokio::test]
     async fn test_invalid_pid() {
-        let r = execute("t2", "process_kill", "abc").await;
-        assert!(r.is_err());
+        let result = execute("t2", "process_kill", "abc").await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_pid_too_small() {
-        let r = execute("t3", "process_kill", "1").await;
-        assert!(r.is_err());
+        let result = execute("t3", "process_kill", "1").await;
+        assert!(result.is_err());
     }
 
     #[cfg(not(target_os = "windows"))]
     #[test]
     fn test_blocked_binary() {
-        let r = parse_safe_command("rm -rf /");
-        assert!(r.is_err());
+        let result = parse_safe_command("rm -rf /");
+        assert!(result.is_err());
     }
 
     #[cfg(not(target_os = "windows"))]
     #[test]
     fn test_parse_command_ok() {
-        let (prog, args) = parse_safe_command("ls -la /tmp").unwrap();
-        assert_eq!(prog, "ls");
+        let (program, args) = parse_safe_command("ls -la /tmp").unwrap();
+        assert_eq!(program, "ls");
         assert_eq!(args, vec!["-la", "/tmp"]);
     }
 }

@@ -1,25 +1,24 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-    <h2>Audit Logs</h2>
-    <button onclick="exportLogs()">⬇ Export CSV</button>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Audit Logs</h1>
+        <div class="page-kicker">Security and operator activity</div>
+    </div>
+    <button onclick="exportLogs()">Export CSV</button>
 </div>
 
-<div class="card" style="margin-bottom:20px">
-    <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <div style="flex:1;min-width:180px">
-            <label style="color:#64748b;font-size:13px">Action filter</label>
-            <input type="text" id="filter-action" placeholder="e.g. command_issued"
-                   style="margin-top:4px" oninput="loadLogs()">
+<div class="card">
+    <div class="toolbar">
+        <div style="flex:1;min-width:220px">
+            <label>Action filter</label>
+            <input type="text" id="filter-action" placeholder="command_issued" oninput="loadLogs()">
         </div>
-        <div style="flex:1;min-width:180px">
-            <label style="color:#64748b;font-size:13px">Actor ID</label>
-            <input type="text" id="filter-actor" placeholder="UUID"
-                   style="margin-top:4px" oninput="loadLogs()">
+        <div style="flex:1;min-width:220px">
+            <label>Actor ID</label>
+            <input type="text" id="filter-actor" placeholder="UUID" oninput="loadLogs()">
         </div>
-        <div style="display:flex;align-items:flex-end">
-            <button onclick="loadLogs()">🔍 Apply</button>
-        </div>
+        <button style="align-self:flex-end" onclick="loadLogs()">Apply</button>
     </div>
 </div>
 
@@ -31,11 +30,11 @@
         </tr></thead>
         <tbody id="logs-tbody"></tbody>
     </table>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
-        <span id="log-info" style="color:#64748b;font-size:13px"></span>
-        <div style="display:flex;gap:8px">
-            <button id="btn-prev" onclick="changePage(-1)" disabled>← Prev</button>
-            <button id="btn-next" onclick="changePage(1)">Next →</button>
+    <div class="toolbar" style="justify-content:space-between;margin-top:14px">
+        <span id="log-info" class="table-muted"></span>
+        <div class="toolbar">
+            <button class="btn-secondary" id="btn-prev" onclick="changePage(-1)" disabled>Prev</button>
+            <button class="btn-secondary" id="btn-next" onclick="changePage(1)">Next</button>
         </div>
     </div>
 </div>
@@ -44,34 +43,34 @@
 {% block scripts %}
 <script>
 let currentPage = 1;
-let totalPages  = 1;
-let allLogs     = [];
+let totalPages = 1;
+let allLogs = [];
 
 const ACTION_COLORS = {
-    "command_issued":        "#6c63ff",
-    "blocked_dangerous_command": "#ef4444",
-    "user_created":          "#22c55e",
-    "user_deleted":          "#ef4444",
-    "agent_deleted":         "#f59e0b",
-    "file_upload":           "#06b6d4",
-    "registered":            "#22c55e",
+    "command_issued": "var(--accent)",
+    "blocked_dangerous_command": "var(--danger)",
+    "user_created": "var(--success)",
+    "user_deleted": "var(--danger)",
+    "agent_deleted": "var(--warn)",
+    "file_upload": "var(--info)",
+    "registered": "var(--success)",
 };
 
 async function loadLogs() {
     const action = document.getElementById("filter-action").value.trim();
-    const actor  = document.getElementById("filter-actor").value.trim();
+    const actor = document.getElementById("filter-actor").value.trim();
     const params = new URLSearchParams({page: currentPage, per_page: 50});
     if (action) params.set("action", action);
-    if (actor)  params.set("actor",  actor);
+    if (actor) params.set("actor", actor);
 
-    const res  = await apiFetch(`/api/v1/admin/logs?${params}`);
+    const res = await apiFetch(`/api/v1/admin/logs?${params}`);
     if (!res.ok) return;
     const data = await res.json();
 
-    allLogs    = data.items;
+    allLogs = data.items;
     totalPages = data.pages;
-    const info = document.getElementById("log-info");
-    info.textContent = `${data.total} total entries, page ${currentPage} of ${data.pages}`;
+    document.getElementById("log-info").textContent =
+        `${data.total} entries, page ${currentPage} of ${data.pages || 1}`;
 
     renderLogs(data.items);
     document.getElementById("btn-prev").disabled = currentPage <= 1;
@@ -81,20 +80,18 @@ async function loadLogs() {
 function renderLogs(logs) {
     const tbody = document.getElementById("logs-tbody");
     tbody.innerHTML = logs.map(l => {
-        const color   = ACTION_COLORS[l.action] || "#64748b";
-        const details = l.details ? JSON.stringify(l.details).substring(0, 80) : "—";
-        const time    = new Date(l.created_at).toLocaleString("ru-RU");
+        const color = ACTION_COLORS[l.action] || "var(--muted)";
+        const details = l.details ? JSON.stringify(l.details).substring(0, 90) : "-";
+        const time = new Date(l.created_at).toLocaleString("ru-RU");
         return `<tr>
-            <td style="color:#64748b;font-size:12px;white-space:nowrap">${time}</td>
-            <td style="font-size:12px;font-family:monospace">${l.actor_id?.substring(0,8) || "—"}</td>
-            <td><span class="badge" style="background:rgba(108,99,255,.15);color:#6c63ff">
-                ${escHtml(l.actor_type || "—")}</span></td>
-            <td><span style="color:${color};font-size:13px">${escHtml(l.action)}</span></td>
-            <td style="color:#94a3b8;font-size:13px">${escHtml(l.target || "—")}</td>
-            <td style="color:#64748b;font-size:12px">${l.ip_address || "—"}</td>
-            <td style="font-size:12px;color:#64748b;max-width:200px;overflow:hidden;
-                       text-overflow:ellipsis;white-space:nowrap"
-                title="${escHtml(JSON.stringify(l.details))}">${escHtml(details)}</td>
+            <td class="table-muted" style="white-space:nowrap">${time}</td>
+            <td class="mono">${escHtml((l.actor_id || "-").substring(0, 8))}</td>
+            <td><span class="badge badge-neutral">${escHtml(l.actor_type || "-")}</span></td>
+            <td><span style="color:${color}">${escHtml(l.action)}</span></td>
+            <td>${escHtml(l.target || "-")}</td>
+            <td class="table-muted">${escHtml(l.ip_address || "-")}</td>
+            <td class="table-muted" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                title="${escHtml(JSON.stringify(l.details || {}))}">${escHtml(details)}</td>
         </tr>`;
     }).join("");
 }
@@ -105,24 +102,19 @@ function changePage(delta) {
 }
 
 function exportLogs() {
-    if (!allLogs.length) return alert("No logs loaded");
-    const headers = ["time","actor_id","actor_type","action","target","ip","details"];
+    if (!allLogs.length) return showToast("No logs loaded", "error");
+    const headers = ["time", "actor_id", "actor_type", "action", "target", "ip", "details"];
     const rows = allLogs.map(l =>
-        [l.created_at, l.actor_id, l.actor_type, l.action,
-         l.target, l.ip_address, JSON.stringify(l.details)]
-        .map(v => `"${String(v||"").replace(/"/g,'""')}"`)
-        .join(",")
+        [l.created_at, l.actor_id, l.actor_type, l.action, l.target, l.ip_address, JSON.stringify(l.details)]
+            .map(v => `"${String(v || "").replace(/"/g, '""')}"`)
+            .join(",")
     );
-    const csv  = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], {type:"text/csv"});
-    const a    = document.createElement("a");
-    a.href     = URL.createObjectURL(blob);
-    a.download = `audit_logs_${new Date().toISOString().slice(0,10)}.csv`;
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], {type: "text/csv"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `audit_logs_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
-}
-
-function escHtml(s) {
-    return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
 loadLogs();

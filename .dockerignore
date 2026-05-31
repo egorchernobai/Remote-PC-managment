@@ -1,0 +1,14 @@
+.git
+.pytest_cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.DS_Store
+.env
+agent/target
+agent/certs
+server/certs
+server/.pytest_cache
+server/rmm-project
+uploads
+*.zip

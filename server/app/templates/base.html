@@ -5,100 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RMM Panel</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        :root { --bg:#0f1117; --card:#1a1d27; --accent:#6c63ff;
-                --text:#e2e8f0; --muted:#64748b; --danger:#ef4444;
-                --success:#22c55e; --warn:#f59e0b; }
-        * { box-sizing:border-box; margin:0; padding:0; }
-        body { background:var(--bg); color:var(--text);
-               font-family:'Inter',system-ui,sans-serif; display:flex; min-height:100vh; }
-        .sidebar { width:220px; background:var(--card); height:100vh;
-                   padding:24px 16px; position:sticky; top:0; flex-shrink:0; }
-        .sidebar h1 { font-size:17px; color:var(--accent); margin-bottom:8px; }
-        .sidebar .user-info { color:var(--muted); font-size:12px; margin-bottom:28px; }
-        .nav-item { display:block; padding:9px 12px; border-radius:8px;
-                    color:var(--muted); text-decoration:none; margin-bottom:4px;
-                    transition:.15s; }
-        .nav-item:hover,.nav-item.active { background:rgba(108,99,255,.15); color:var(--text); }
-        .main { flex:1; padding:32px; overflow-y:auto; }
-        .card { background:var(--card); border-radius:12px; padding:20px; margin-bottom:20px; }
-        .badge { padding:2px 8px; border-radius:4px; font-size:12px; font-weight:500; }
-        .badge-online  { background:rgba(34,197,94,.15);  color:var(--success); }
-        .badge-offline { background:rgba(239,68,68,.15);  color:var(--danger); }
-        table { width:100%; border-collapse:collapse; }
-        th,td { padding:10px 12px; text-align:left;
-                border-bottom:1px solid rgba(255,255,255,.05); font-size:14px; }
-        th { color:var(--muted); font-weight:500; font-size:13px; }
-        tr:hover td { background:rgba(255,255,255,.02); }
-        input,textarea,select { background:var(--bg); border:1px solid rgba(255,255,255,.1);
-            color:var(--text); padding:8px 12px; border-radius:6px; width:100%;
-            font-family:inherit; font-size:14px; }
-        input:focus,textarea:focus,select:focus { outline:none;
-            border-color:var(--accent); }
-        button { background:var(--accent); color:#fff; border:none;
-                 padding:8px 16px; border-radius:6px; cursor:pointer;
-                 font-size:14px; transition:.15s; }
-        button:hover { opacity:.85; }
-        button:disabled { opacity:.4; cursor:not-allowed; }
-        .btn-danger { background:var(--danger); }
-        .btn-secondary { background:rgba(255,255,255,.08); color:var(--text); }
-        pre { background:#000; padding:16px; border-radius:8px;
-              font-size:13px; overflow-x:auto; white-space:pre-wrap;
-              line-height:1.5; }
-        h2 { font-size:22px; font-weight:600; }
-        h3 { font-size:16px; font-weight:600; }
-        label { font-size:13px; color:var(--muted); display:block; margin-bottom:4px; }
-        #toast-container { position:fixed; bottom:24px; right:24px;
-            z-index:9999; display:flex; flex-direction:column; gap:8px; }
-        .toast { background:var(--card); border-left:3px solid var(--accent);
-            padding:12px 16px; border-radius:8px; font-size:14px;
-            min-width:260px; animation:slideIn .3s ease;
-            box-shadow:0 4px 24px rgba(0,0,0,.4); }
-        .toast.error   { border-color:var(--danger); }
-        .toast.success { border-color:var(--success); }
-        @keyframes slideIn { from{transform:translateX(40px);opacity:0}
-                             to{transform:translateX(0);opacity:1} }
-    </style>
 </head>
 <body>
+<div class="app-shell">
+    <nav class="sidebar">
+        <div class="brand">
+            <div class="brand-title">RMM Panel</div>
+            <div class="brand-subtitle">Remote operations console</div>
+        </div>
 
-<nav class="sidebar">
-    <h1>🖥 RMM Panel</h1>
-    <div class="user-info">{{ username }} · {{ role }}</div>
-    <a href="/dashboard" class="nav-item {% if active=='dashboard' %}active{% endif %}">
-        📊 Dashboard</a>
-    <a href="/agents"   class="nav-item {% if active=='agents'    %}active{% endif %}">
-        🤖 Agents</a>
-    <a href="/logs"     class="nav-item {% if active=='logs'      %}active{% endif %}">
-        📋 Audit Logs</a>
-    {% if role == 'admin' %}
-    <a href="/admin"    class="nav-item {% if active=='admin'     %}active{% endif %}">
-        ⚙️ Admin</a>
-    {% endif %}
-    <a href="/logout"   class="nav-item"
-       style="position:absolute;bottom:24px;left:16px;right:16px">
-        🚪 Logout</a>
-</nav>
+        <div class="user-info">
+            <span>{{ username }}</span>
+            <span class="role-chip">{{ role }}</span>
+        </div>
 
-<main class="main">
-    {% block content %}{% endblock %}
-</main>
+        <div class="nav">
+            <a href="/dashboard" class="nav-item {% if active=='dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="/agents" class="nav-item {% if active=='agents' %}active{% endif %}">Agents</a>
+            <a href="/logs" class="nav-item {% if active=='logs' %}active{% endif %}">Audit Logs</a>
+            {% if role == 'admin' %}
+            <a href="/admin" class="nav-item {% if active=='admin' %}active{% endif %}">Admin</a>
+            {% endif %}
+            <a href="/logout" class="nav-item nav-logout">Logout</a>
+        </div>
+    </nav>
+
+    <main class="main">
+        {% block content %}{% endblock %}
+    </main>
+</div>
 
 <div id="toast-container"></div>
 
 <script>
-    // ✅ Токен берётся из Flask-сессии через Jinja2 — не из localStorage
     let accessToken = "{{ session.get('access_token', '') }}";
 
     async function apiFetch(url, options = {}) {
         options.headers = {
             ...(options.headers || {}),
             "Authorization": `Bearer ${accessToken}`,
-            "Content-Type":  options.body instanceof FormData
-                             ? undefined  // браузер сам выставит multipart
-                             : "application/json",
+            "Content-Type": options.body instanceof FormData ? undefined : "application/json",
         };
-        // Удаляем Content-Type если FormData
         if (options.body instanceof FormData) {
             delete options.headers["Content-Type"];
         }
@@ -114,35 +61,37 @@
     }
 
     function showToast(msg, type = "info", ms = 4000) {
-        const t   = document.createElement("div");
-        t.className   = `toast ${type}`;
-        t.textContent = msg;
-        document.getElementById("toast-container").appendChild(t);
-        setTimeout(() => t.remove(), ms);
+        const toast = document.createElement("div");
+        toast.className = `toast ${type}`;
+        toast.textContent = msg;
+        document.getElementById("toast-container").appendChild(toast);
+        setTimeout(() => toast.remove(), ms);
     }
 
     function escHtml(s) {
         return String(s || "")
-            .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-            .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
     }
 
     function formatTime(t) {
         if (!t || t === "None") return "Never";
-        const d    = new Date(t);
+        const d = new Date(t);
         const diff = (Date.now() - d) / 1000;
-        if (diff < 60)    return "только что";
-        if (diff < 3600)  return `${Math.floor(diff/60)}м назад`;
-        if (diff < 86400) return `${Math.floor(diff/3600)}ч назад`;
+        if (diff < 60) return "just now";
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
         return d.toLocaleString("ru-RU");
     }
 
     function formatUptime(secs) {
-        if (!secs) return "—";
-        const d = Math.floor(secs/86400),
-              h = Math.floor(secs%86400/3600),
-              m = Math.floor(secs%3600/60);
-        return `${d}д ${h}ч ${m}м`;
+        if (!secs) return "-";
+        const d = Math.floor(secs / 86400);
+        const h = Math.floor(secs % 86400 / 3600);
+        const m = Math.floor(secs % 3600 / 60);
+        return `${d}d ${h}h ${m}m`;
     }
 </script>
 

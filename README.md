@@ -1,5 +1,36 @@
 # RMM Project
 
+## Docker
+
+1. Create local environment file if you need to override defaults:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. For LAN access on Windows, start Docker through the helper script. It detects the first `192.168.1.*` address and exports it for certificates and agent packages:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/docker-lan.ps1 -Build
+   ```
+
+3. Or set `SERVER_PUBLIC_HOSTS` manually in `.env` when agents connect through a LAN/external IP or DNS name:
+   ```env
+   SERVER_PUBLIC_HOSTS=192.168.1.50,203.0.113.10,rmm.example.com
+   AGENT_SERVER_HOST=192.168.1.50:8443
+   ```
+
+4. Build and start the stack manually:
+   ```bash
+   docker compose up --build
+   ```
+
+5. Open the panel:
+   ```text
+   https://localhost:8443
+   https://192.168.1.50:8443
+   ```
+
+The compose stack starts PostgreSQL and the Flask server. Persistent data is stored in Docker volume `postgres_data`, while generated certificates and uploaded files are mounted to `server/certs`, `agent/certs`, and `uploads`.
+
 Это репозиторий удалённой системы управления и мониторинга (Remote Monitoring and Management), состоящей из двух основных компонентов:
 
 - `server/` — серверная часть на Python/Flask с REST API, WebSocket и административной панелью

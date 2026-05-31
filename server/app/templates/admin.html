@@ -1,37 +1,50 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-    <h2>Управление пользователями</h2>
-    <button onclick="showCreateModal()">+ Создать пользователя</button>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Admin</h1>
+        <div class="page-kicker">Users and deployment packages</div>
+    </div>
+    <div class="toolbar">
+        <select id="agent-package-target" style="width:auto;min-width:170px">
+            <option value="native">Current machine</option>
+            <option value="windows-x64">Windows x64</option>
+            <option value="linux-x64">Linux x64</option>
+            <option value="linux-arm64">Linux ARM64</option>
+        </select>
+        <button class="btn-secondary" id="agent-package-btn" onclick="downloadAgentPackage()">Build agent</button>
+        <button onclick="showCreateModal()">Create user</button>
+    </div>
 </div>
 
 <div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Users</h2>
+    </div>
     <table>
         <thead><tr>
-            <th>Имя</th><th>Роль</th><th>Статус</th><th>Создан</th><th>Действия</th>
+            <th>Name</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th>
         </tr></thead>
         <tbody id="users-tbody"></tbody>
     </table>
 </div>
 
-<!-- Модалка создания -->
-<div id="create-modal" style="display:none;position:fixed;inset:0;
-     background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center">
-    <div class="card" style="width:400px">
-        <h3 style="margin-bottom:20px">Новый пользователь</h3>
-        <label>Имя пользователя</label>
+<div id="create-modal" class="modal">
+    <div class="modal-panel" style="max-width:420px">
+        <h3 class="card-title" style="margin-bottom:16px">New user</h3>
+        <label>Username</label>
         <input type="text" id="new-username" style="margin-bottom:12px">
-        <label>Пароль (минимум 12 символов)</label>
+        <label>Password</label>
         <input type="password" id="new-password" style="margin-bottom:12px">
-        <label>Роль</label>
-        <select id="new-role" style="margin-bottom:20px">
-            <option value="viewer">viewer — только просмотр</option>
-            <option value="operator">operator — выполнение команд</option>
-            <option value="admin">admin — полный доступ</option>
+        <label>Role</label>
+        <select id="new-role" style="margin-bottom:18px">
+            <option value="viewer">viewer</option>
+            <option value="operator">operator</option>
+            <option value="admin">admin</option>
         </select>
-        <div style="display:flex;gap:8px">
-            <button onclick="createUser()">Создать</button>
-            <button class="btn-secondary" onclick="closeCreateModal()">Отмена</button>
+        <div class="toolbar">
+            <button onclick="createUser()">Create</button>
+            <button class="btn-secondary" onclick="closeCreateModal()">Cancel</button>
         </div>
     </div>
 </div>
@@ -40,36 +53,34 @@
 {% block scripts %}
 <script>
 async function loadUsers() {
-    const res   = await apiFetch("/api/v1/admin/users");
+    const res = await apiFetch("/api/v1/admin/users");
     if (!res.ok) return;
     const users = await res.json();
     const tbody = document.getElementById("users-tbody");
     tbody.innerHTML = users.map(u => `<tr>
         <td><strong>${escHtml(u.username)}</strong></td>
-        <td><span class="badge" style="background:rgba(108,99,255,.15);color:#6c63ff">
-            ${u.role}</span></td>
+        <td><span class="badge badge-neutral">${escHtml(u.role)}</span></td>
         <td>${u.is_active
             ? '<span class="badge badge-online">active</span>'
             : '<span class="badge badge-offline">disabled</span>'}</td>
-        <td style="color:#64748b;font-size:13px">${formatTime(u.created_at)}</td>
-        <td style="display:flex;gap:6px">
-            <button class="btn-secondary" style="padding:4px 10px;font-size:12px"
-                onclick="toggleUser('${u.id}', ${!u.is_active})">
-                ${u.is_active ? 'Disable' : 'Enable'}</button>
-            <button class="btn-danger" style="padding:4px 10px;font-size:12px"
-                onclick="deleteUser('${u.id}','${escHtml(u.username)}')">Del</button>
+        <td class="table-muted">${formatTime(u.created_at)}</td>
+        <td>
+            <button class="btn-secondary btn-sm" onclick="toggleUser('${u.id}', ${!u.is_active})">
+                ${u.is_active ? 'Disable' : 'Enable'}
+            </button>
+            <button class="btn-danger btn-sm" onclick="deleteUser('${u.id}','${escHtml(u.username)}')">Delete</button>
         </td>
     </tr>`).join("");
 }
 
-function showCreateModal()  { document.getElementById("create-modal").style.display = "flex"; }
+function showCreateModal() { document.getElementById("create-modal").style.display = "flex"; }
 function closeCreateModal() { document.getElementById("create-modal").style.display = "none"; }
 
 async function createUser() {
     const username = document.getElementById("new-username").value.trim();
     const password = document.getElementById("new-password").value;
-    const role     = document.getElementById("new-role").value;
-    if (!username || !password) return showToast("Заполни все поля", "error");
+    const role = document.getElementById("new-role").value;
+    if (!username || !password) return showToast("Fill username and password", "error");
 
     const res = await apiFetch("/api/v1/admin/users", {
         method: "POST",
@@ -77,11 +88,11 @@ async function createUser() {
     });
     const data = await res.json();
     if (res.ok) {
-        showToast(`Пользователь ${username} создан`, "success");
+        showToast(`User ${username} created`, "success");
         closeCreateModal();
         loadUsers();
     } else {
-        showToast(data.error || "Ошибка", "error");
+        showToast(data.error || "Create failed", "error");
     }
 }
 
@@ -90,14 +101,58 @@ async function toggleUser(id, newState) {
         method: "PATCH",
         body: JSON.stringify({is_active: newState})
     });
-    if (res.ok) { showToast("Обновлено", "success"); loadUsers(); }
+    if (res.ok) {
+        showToast("User updated", "success");
+        loadUsers();
+    }
 }
 
 async function deleteUser(id, name) {
-    if (!confirm(`Удалить пользователя "${name}"?`)) return;
+    if (!confirm(`Delete user "${name}"?`)) return;
     const res = await apiFetch(`/api/v1/admin/users/${id}`, {method: "DELETE"});
-    if (res.ok) { showToast(`${name} удалён`, "success"); loadUsers(); }
-    else showToast("Ошибка удаления", "error");
+    if (res.ok) {
+        showToast(`${name} deleted`, "success");
+        loadUsers();
+    } else {
+        showToast("Delete failed", "error");
+    }
+}
+
+async function downloadAgentPackage() {
+    const btn = document.getElementById("agent-package-btn");
+    const targetSelect = document.getElementById("agent-package-target");
+    const target = targetSelect.value;
+    btn.disabled = true;
+    targetSelect.disabled = true;
+    btn.textContent = "Building...";
+
+    try {
+        const res = await apiFetch(`/api/v1/admin/agent-package?target=${encodeURIComponent(target)}`);
+        if (!res.ok) {
+            let message = "Package build failed";
+            try {
+                const data = await res.json();
+                message = data.error || message;
+            } catch (_) {}
+            showToast(message, "error", 7000);
+            return;
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `rmm-agent-package-${target}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast("Agent package ready", "success");
+    } finally {
+        btn.disabled = false;
+        targetSelect.disabled = false;
+        btn.textContent = "Build agent";
+    }
 }
 
 loadUsers();
