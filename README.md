@@ -1,163 +1,362 @@
-# RMM Project
+# RMM (Remote Monitoring and Management)
 
-## Docker
+Полнофункциональная система для удаленного мониторинга и управления компьютерами в локальной сети или через интернет. Состоит из серверной части на Python/Flask и кроссплатформенного агента на Rust.
 
-1. Create local environment file if you need to override defaults:
-   ```bash
-   cp .env.example .env
-   ```
+## 🎯 Возможности
 
-2. For LAN access on Windows, start Docker through the helper script. It detects the first `192.168.1.*` address and exports it for certificates and agent packages:
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File scripts/docker-lan.ps1 -Build
-   ```
+- **Управление агентами** — регистрация, мониторинг статуса и удаление устройств
+- **Исполнение команд** — выполнение shell/PowerShell команд на удалённых машинах в реальном времени
+- **Передача файлов** — загрузка и скачивание файлов с/на удалённые машины
+- **Мониторинг системы** — сбор информации о ОС, процессах и сервисах
+- **WebSocket Real-Time** — двусторонняя связь для мгновенных обновлений
+- **Панель администратора** — веб-интерфейс для управления и просмотра логов
+- **Аудит операций** — логирование всех действий администраторов
+- **JWT аутентификация** — защищенный доступ к API
+- **TLS/SSL** — автоматическая генерация сертификатов с поддержкой SAN для локальной сети
 
-3. Or set `SERVER_PUBLIC_HOSTS` manually in `.env` when agents connect through a LAN/external IP or DNS name:
-   ```env
-   SERVER_PUBLIC_HOSTS=192.168.1.50,203.0.113.10,rmm.example.com
-   AGENT_SERVER_HOST=192.168.1.50:8443
-   ```
+## 📋 Требования
 
-4. Build and start the stack manually:
-   ```bash
-   docker compose up --build
-   ```
+### Для запуска серверной части
 
-5. Open the panel:
-   ```text
-   https://localhost:8443
-   https://192.168.1.50:8443
-   ```
+- Docker и Docker Compose
+- (или) Python 3.11+, PostgreSQL 16, pip
 
-The compose stack starts PostgreSQL and the Flask server. Persistent data is stored in Docker volume `postgres_data`, while generated certificates and uploaded files are mounted to `server/certs`, `agent/certs`, and `uploads`.
+### Для сборки агента
 
-Это репозиторий удалённой системы управления и мониторинга (Remote Monitoring and Management), состоящей из двух основных компонентов:
+- Rust 1.70+
+- Cargo
 
-- `server/` — серверная часть на Python/Flask с REST API, WebSocket и административной панелью
-- `agent/` — агент на Rust, который регистрируется на сервере, отправляет heartbeat и получает команды
+### Для использования
 
-## Архитектура
+- Браузер с поддержкой WebSocket (Chrome, Firefox, Safari, Edge)
+- Сетевое соединение до сервера (локальная сеть или интернет)
 
-- Сервер работает как веб-приложение Flask и предоставляет:
-  - API для агентов, команд, файлов и администрирования
-  - WebSocket-подключение для двусторонней связи с агентами
-  - JWT-аутентификацию и rate limiting
-- Агент подключается к серверу, регистрируется и поддерживает постоянное соединение по WebSocket.
-- Состояние хранится в базе данных через SQLAlchemy. В проекте предусмотрены модели пользователей, агентов, команд, логов аудита и передач файлов.
+## 🚀 Быстрый старт
 
-## Возможности
+### 1. С Docker (рекомендуется)
 
-- Панель управления агентами и командами
-- Регистрация и хранение агентов с токенами
-- Периодический heartbeat и сбор системной информации
-- Отправка команд агентам через WebSocket
-- Безопасность с TLS/mTLS для серверных соединений
-- Файловые операции и логирование аудита
+```bash
+# Клонируйте репозиторий
+git clone https://github.com/Ch3z2z/Remote-PC-managment.git
+cd Remote-PC-managment
 
-## Требования
+# Скопируйте пример конфигурации
+cp .env.example .env
 
-- Python 3.11+ (или совместимая версия)
-- Rust и Cargo
-- База данных, совместимая с SQLAlchemy (например, PostgreSQL)
+# Запустите контейнеры
+docker compose up --build
+```
 
-## Установка и запуск сервера
+Сервер будет доступен по адресу:
+- `https://localhost:8443` (локально)
+- `https://<YOUR_IP>:8443` (из локальной сети)
 
-1. Перейдите в каталог сервера:
-   ```bash
-   cd server
-   ```
+### 2. Без Docker (локальная разработка)
 
-2. Создайте виртуальное окружение и установите зависимости:
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate   # Windows
-   pip install -r requirements.txt
-   ```
+#### Сервер
 
-3. Настройте переменные окружения.
-   Можно создать файл `server/app/.env` с параметрами, например:
-   ```env
-   SECRET_KEY=your-secret-key
-   JWT_SECRET_KEY=your-jwt-secret-key
-   DATABASE_URL=postgresql://user:password@localhost:5432/rmm_db
-   SERVER_CERT=certs/server.crt
-   SERVER_KEY=certs/server.key
-   AGENT_CA=certs/agent-ca.crt
-   UPLOAD_FOLDER=uploads
-   ADMIN_PASSWORD=ChangeMe_12345!
-   USE_TLS=true
-   PORT=8443
-   ```
+```bash
+cd server
 
-4. Запустите сервер:
-   ```bash
-   python run.py
-   ```
+# Создайте виртуальное окружение
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# или
+venv\Scripts\activate  # Windows
 
-5. По умолчанию сервер стартует на `https://0.0.0.0:8443` с TLS. Если `USE_TLS=false`, используется `http://127.0.0.1:5000`.
+# Установите зависимости
+pip install -r requirements.txt
 
-## Инициализация базы данных
+# Запустите миграции БД (при первом запуске)
+flask db upgrade
 
-При первом запуске `server/run.py` автоматически создаётся база данных и добавляется пользователь `admin`.
+# Запустите сервер
+python run.py
+```
 
-- Пароль берётся из `ADMIN_PASSWORD`.
-- Если переменная не задана, используется значение по умолчанию `Admin_Win_123!`.
+#### Агент
 
-> Обязательно поменяйте пароль администратора на безопасный.
+```bash
+cd agent
 
-## Запуск агента
+# Отредактируйте config.json с адресом сервера
+# Скомпилируйте для вашей ОС
+cargo build --release
 
-1. Перейдите в каталог агента:
-   ```bash
-   cd agent
-   ```
+# Запустите агента
+./target/release/rmm-agent  # Linux/Mac
+# или
+target\release\rmm-agent.exe  # Windows
+```
 
-2. Подготовьте `config.json` рядом с исполняемым файлом агента. Пример:
-   ```json
-   {
-     "server_url": "https://server-host:8443",
-     "ws_url": "wss://server-host/ws/agent",
-     "ca_cert_path": "certs/agent-ca.crt",
-     "agent_cert": "certs/agent.crt",
-     "agent_key": "certs/agent.key",
-     "state_file": "agent_state.json",
-     "heartbeat_secs": 30
-   }
-   ```
+## ⚙️ Конфигурация
 
-3. Постройте и запустите агента:
-   ```bash
-   cargo run --manifest-path Cargo.toml --release
-   ```
+### Переменные окружения (.env)
 
-4. Агент читает `config.json` из текущего каталога и сохраняет своё состояние в `agent_state.json`.
+```env
+# Сервер
+PORT=8443
+USE_TLS=true
+SECRET_KEY=your-secret-key-change-me
+JWT_SECRET_KEY=your-jwt-secret-change-me
+ADMIN_PASSWORD=Admin_Win_123!
 
-## Сертификаты и безопасность
+# База данных
+POSTGRES_DB=rmm_dev
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+DATABASE_URL=postgresql://postgres:postgres@db:5432/rmm_dev
 
-- Сервер использует TLS с конфигурацией из `server/app/config.py`.
-- Для mTLS требуется CA-сертификат агента (`AGENT_CA`).
-- Проверка подлинности агента выполняется на уровне приложения по fingerprint сертификата.
+# Сеть и сертификаты
+SERVER_PUBLIC_HOSTS=192.168.1.50,example.com
+AGENT_SERVER_HOST=192.168.1.50:8443
+CERT_FORCE_RENEW=false
 
-## Структура проекта
+# Файлы
+UPLOAD_FOLDER=/app/uploads
+```
 
-- `agent/` — Rust-агент и его конфигурация
-  - `src/` — исходный код агента
-  - `Cargo.toml` — зависимости и метаданные проекта
-- `server/` — веб-сервер и API
-  - `app/` — приложение Flask
-  - `app/api/` — маршруты REST API
-  - `app/static/` и `app/templates/` — статические файлы и шаблоны
-  - `run.py` — точка входа для запуска сервера
-  - `requirements.txt` — Python-зависимости
-- `certs/` — репозиторий сертификатов и вспомогательных файлов для TLS
-- `uploads/` — директория для загруженных файлов
+### Для доступа из локальной сети на Windows
 
-## Полезные заметки
+Используйте вспомогательный скрипт для автоматического обнаружения IP:
 
-- Сервер использует `flask-limiter` для защиты от DDoS и brute-force атак.
-- В приложении включена защита cookie (`HttpOnly`, `SameSite=Lax`).
-- Список допустимых команд управляется через `ALLOWED_COMMANDS` в `server/app/config.py`.
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/docker-lan.ps1 -Build
+```
 
-## Контакты
+Или установите переменные вручную:
 
-Добавьте сюда свои контакты или заметки по развертыванию, если хотите использовать этот проект как основу для дальнейшей разработки.
+```env
+SERVER_PUBLIC_HOSTS=192.168.1.50
+AGENT_SERVER_HOST=192.168.1.50:8443
+```
+
+### Конфигурация агента (agent/config.json)
+
+```json
+{
+  "server_url": "https://192.168.1.50:8443",
+  "ca_cert_path": "certs/ca.crt",
+  "agent_cert": "certs/agent.crt",
+  "agent_key": "certs/agent.key",
+  "heartbeat_interval": 30,
+  "log_level": "info"
+}
+```
+
+## 📱 Использование
+
+### Вход в панель администратора
+
+1. Откройте браузер: `https://localhost:8443`
+2. Введите учетные данные:
+   - Пользователь: `admin`
+   - Пароль: значение `ADMIN_PASSWORD` (по умолчанию `Admin_Win_123!`)
+
+### Регистрация агента
+
+1. На сервере скачайте пакет агента: **Admin Panel → Download Agent Package**
+2. На целевой машине распакуйте и запустите агент
+3. Агент автоматически регистрируется и появляется в списке
+
+### Выполнение команд
+
+1. В панели выберите агент
+2. Перейдите на вкладку **Commands**
+3. Введите команду (shell для Linux/Mac, PowerShell для Windows)
+4. Результат появится в реальном времени через WebSocket
+
+### Управление файлами
+
+1. Выберите агент → **Files**
+2. Загрузить: выберите файл и отправьте
+3. Скачать: введите путь на удалённой машине
+
+## 🏗️ Архитектура
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Web Browser                              │
+│         (Admin Panel + WebSocket Client)                    │
+└─────────────────┬───────────────────────────────────────────┘
+                  │
+                  │ HTTPS / WebSocket
+                  │
+┌─────────────────▼───────────────────────────────────────────┐
+│              Flask Server (Python)                           │
+│  ┌──────────────┬──────────────┬──────────────────────────┐ │
+│  │ REST API     │ WebSocket    │ Admin Panel              │ │
+│  │ /api/v1/...  │ /ws/agent    │ /dashboard, /login, etc  │ │
+│  └──────────────┴──────────────┴──────────────────────────┘ │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │ SQLAlchemy ORM                                         │ │
+│  │ (Users, Agents, Commands, AuditLog, Files)            │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────┬───────────────────────────────────────────┘
+                  │
+        ┌─────────┴─────────┐
+        │                   │
+    HTTPS/TLS           PostgreSQL
+        │                   │
+┌───────▼────────┐    ┌─────▼──────┐
+│  RMM Agents    │    │  Database  │
+│  (Rust)        │    │  (DB Data) │
+└────────────────┘    └────────────┘
+```
+
+## 🔐 Безопасность
+
+- **TLS 1.2+** — все соединения защищены
+- **Самоподписанные сертификаты** — автоматически генерируются при запуске
+- **JWT токены** — для аутентификации агентов и пользователей
+- **Хеширование паролей** — bcrypt с солью
+- **Rate limiting** — защита от перебора паролей
+- **CSRF защита** — на формах административной панели
+- **Аудит логирования** — отслеживание всех операций
+
+## 🧪 Разработка
+
+### Запуск тестов
+
+```bash
+cd server
+pytest tests/ -v
+```
+
+### Структура проекта
+
+```
+.
+├── agent/              # Rust агент
+│  ├── src/
+│  │  ├── main.rs
+│  │  ├── auth.rs
+│  │  ├── websocket_client.rs
+│  │  ├── command_executor.rs
+│  │  └── ...
+│  ├── Cargo.toml
+│  └── certs/           # Сертификаты для агента
+│
+├── server/             # Python Flask сервер
+│  ├── app/
+│  │  ├── __init__.py
+│  │  ├── models.py
+│  │  ├── views.py
+│  │  ├── websocket.py
+│  │  ├── cert_bootstrap.py
+│  │  ├── api/          # REST API endpoints
+│  │  │  ├── admin.py
+│  │  │  ├── agents.py
+│  │  │  ├── commands.py
+│  │  │  ├── files.py
+│  │  │  └── auth_routes.py
+│  │  ├── static/       # CSS, JS
+│  │  ├── templates/    # HTML шаблоны
+│  │  └── ...
+│  ├── tests/
+│  ├── run.py           # Точка входа
+│  ├── requirements.txt
+│  ├── certs/           # Сертификаты сервера
+│  └── pytest.ini
+│
+├── scripts/            # Вспомогательные скрипты
+│  └── docker-lan.ps1   # PowerShell для Windows
+│
+├── docker-compose.yml  # Конфигурация контейнеров
+├── Dockerfile          # Образ для сборки
+└── README.md          # Этот файл
+```
+
+## 📦 API Endpoints
+
+### Аутентификация
+
+- `POST /api/v1/auth/login` — вход пользователя
+- `POST /api/v1/auth/logout` — выход пользователя
+
+### Агенты
+
+- `GET /api/v1/agents/` — список агентов
+- `POST /api/v1/agents/register` — регистрация агента
+- `GET /api/v1/agents/<id>` — информация об агенте
+- `DELETE /api/v1/agents/<id>` — удаление агента
+
+### Команды
+
+- `POST /api/v1/agents/<id>/commands` — выполнить команду
+- `GET /api/v1/agents/<id>/commands` — история команд
+- `GET /api/v1/commands/<cmd_id>` — результат команды
+
+### Файлы
+
+- `POST /api/v1/agents/<id>/files/upload` — загрузить файл
+- `GET /api/v1/agents/<id>/files/download` — скачать файл
+
+### WebSocket
+
+- `WS /ws/agent` — двусторонняя связь с агентом
+
+## 🐛 Решение проблем
+
+### Docker недоступен из другой машины в сети
+
+**На Windows с WSL2:**
+
+Отредактируйте или создайте `C:\Users\<YourUser>\.wslconfig`:
+
+```ini
+[wsl2]
+firewall=false
+networkingMode=mirrored
+```
+
+Затем перезагрузите WSL2:
+
+```powershell
+wsl --shutdown
+docker compose up -d
+```
+
+### Ошибка сертификата при подключении агента
+
+Убедитесь, что `SERVER_PUBLIC_HOSTS` и `AGENT_SERVER_HOST` включают правильный IP/доменное имя:
+
+```env
+SERVER_PUBLIC_HOSTS=192.168.1.50,your-domain.com
+AGENT_SERVER_HOST=192.168.1.50:8443
+CERT_FORCE_RENEW=true
+```
+
+Перезапустите сервер:
+
+```bash
+docker compose down
+docker compose up --build
+```
+
+### Слабый ключ JWT
+
+Если видите предупреждение `InsecureKeyLengthWarning`:
+
+Установите длинный `JWT_SECRET_KEY` (минимум 32 символа):
+
+```env
+JWT_SECRET_KEY=your-very-long-secret-key-with-at-least-32-characters-here-1234567890
+```
+
+## 📄 Лицензия
+
+MIT
+
+## 👨‍💻 Автор
+
+Разработано как курсовой проект.
+
+## 🤝 Контрибьютинг
+
+Приветствуются pull requests и issues.
+
+## 📞 Поддержка
+
+Для вопросов и проблем откройте issue на GitHub.
